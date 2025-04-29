@@ -3,7 +3,7 @@ neo4j-server-remote is an MCP server that uses Server-Sent Events (SSE) as the t
 
 ## Overview
 
-A Model Context Protocol (MCP) server implementation that provides database interaction and allows for graph exploration capabilities through Neo4j. This server enables the execution of Cypher graph queries, analysis of complex domain data, and supports the selection of remotely accessible databases. Inspired by [mcp-neo4j/servers/mcp-neo4j-cypher at main · neo4j-contrib/mcp-neo4j](https://github.com/neo4j-contrib/mcp-neo4j/tree/main/servers/mcp-neo4j-cypher)
+A Model Context Protocol (MCP) server implementation that provides database interaction and allows for graph exploration capabilities through Neo4j. This server enables the execution of Cypher graph queries, analysis of complex domain data, and supports the selection of remotely accessible databases. Inspired by [neo4j-contrib/mcp-neo4j](https://github.com/neo4j-contrib/mcp-neo4j/tree/main/servers/mcp-neo4j-cypher).
 
 ### Prompts
 
