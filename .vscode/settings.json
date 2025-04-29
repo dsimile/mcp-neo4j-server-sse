@@ -1,0 +1,7 @@
+{    // black formatter配置
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "black-formatter.args": [
+        "--skip-string-normalization"
+    ],
+    "editor.formatOnSave": true
+}
