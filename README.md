@@ -39,12 +39,18 @@ The server offers six core tools:
 
 ## Usage with Cline client
 
-1.pip install required dependencies(e.g., ux, neo4j, mcp)
-
-2.Clone the repository
+1.Clone the repository
 
 ```cmd
 git clone https://github.com/dsimile/neo4j-server-remote.git
+```
+
+2.Install required
+
+```cmd
+cd neo4j-server-remote
+
+pip install -r requirements.txt
 ```
 
 3.Run server
@@ -52,8 +58,6 @@ git clone https://github.com/dsimile/neo4j-server-remote.git
 Run the MCP server using the UX command, and you can select the database of your choice. The default address ip is 0.0.0.0. The default address port is 8543.
 
 ```cmd
-cd neo4j-server-remote
-
 uv run .\src\mcp-neo4j-cypher\neo4j_server_remote.py --url bolt://localhost:7687 --username neo4j --password neo4j123 --database neo4j
 ```
 
