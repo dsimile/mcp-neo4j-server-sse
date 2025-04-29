@@ -39,9 +39,7 @@ The server offers six core tools:
 
 ## Usage with Cline client
 
-1.pip install required dependencies
-
-- pip install ux
+1.pip install required dependencies(e.g., ux, neo4j, mcp)
 
 2.Clone the repository
 
