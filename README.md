@@ -69,7 +69,7 @@ Add the server to your `cline_mcp_settings.json` with configuration of
 {
   "mcpServers": {
     "neo4j-remote": {
-      "url": "http://0.0.0.0:8543/message",
+      "url": "http://0.0.0.0:8543/sse",
       "disabled": false,
       "autoApprove": []
     }

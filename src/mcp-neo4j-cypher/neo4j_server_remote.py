@@ -1,9 +1,5 @@
-import neo4j
 import logging
-from logging.handlers import RotatingFileHandler
 import traceback
-from contextlib import closing
-from pathlib import Path
 from mcp.server.models import InitializationOptions
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
@@ -12,9 +8,9 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
+from starlette.routing import Mount
 from starlette.middleware.cors import CORSMiddleware
 import uvicorn
-from pydantic import AnyUrl
 from typing import Any
 from neo4j import GraphDatabase
 import re
@@ -22,14 +18,12 @@ import re
 logger = logging.getLogger('mcp_neo4j_cypher_remote')
 logger.info("Starting MCP neo4j Server is remote")
 
-
 def is_write_query(query: str) -> bool:
     """Checks if a Cypher query contains common write clauses."""
     return (
         re.search(r"\b(MERGE|CREATE|SET|DELETE|REMOVE|ADD)\b", query, re.IGNORECASE)
         is not None
     )
-
 
 class neo4jDatabase:
     def __init__(
@@ -68,7 +62,6 @@ class neo4jDatabase:
     def close(self) -> None:
         "Close the Neo4j Driver"
         self.driver.close()
-
 
 async def main(
     neo4j_url: str,
@@ -187,7 +180,7 @@ RETURN label, apoc.map.fromPairs(attributes) as attributes, apoc.map.fromPairs(r
 
     # --- SSE Transport Setup ---
     # Initialize SseServerTransport with the path *without* the trailing slash
-    sse_transport = SseServerTransport("/message")
+    sse_transport = SseServerTransport("/message/")
 
     async def message_sse(request: Request):
         async with sse_transport.connect_sse(
@@ -220,12 +213,13 @@ RETURN label, apoc.map.fromPairs(attributes) as attributes, apoc.map.fromPairs(r
                 {"error": str(e), "traceback": traceback.format_exc()}, status_code=500
             )
 
-    routes = [
-        Route("/message", message_sse, methods=["GET"]),
-        Route("/message", message_post, methods=["POST"]),
-    ]
-
-    app = Starlette(routes=routes)
+    # Create the Starlette app using Mount for /messages/
+    app = Starlette(
+        routes=[
+            Route("/sse", endpoint=message_sse),
+            Mount("/message/", app=sse_transport.handle_post_message),
+        ]
+    )
 
     app.add_middleware(
         CORSMiddleware,
@@ -241,7 +235,6 @@ RETURN label, apoc.map.fromPairs(attributes) as attributes, apoc.map.fromPairs(r
     # Create a Uvicorn server instance
     uvicorn_server = uvicorn.Server(config)
     # Run the server. This call is blocking until the server stops.
-    # Since main is async, we need to await serve().
     logger.info(f"Starting Uvicorn server on http://{host}:{port}")
     await uvicorn_server.serve()
 
