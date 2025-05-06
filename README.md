@@ -47,6 +47,8 @@ git clone https://github.com/dsimile/neo4j-server-remote.git
 
 2.Install required
 
+- Python 3.12+
+
 ```cmd
 cd neo4j-server-remote
 
@@ -60,6 +62,8 @@ Run the MCP server using the UX command, and you can select the database of your
 ```cmd
 uv run .\src\mcp-neo4j-cypher\neo4j_server_remote.py --url bolt://localhost:7687 --username neo4j --password neo4j123 --database neo4j
 ```
+
+> Note: Please ensure that Neo4j is running and accessible for remote connections.
 
 ### Released Package
 
