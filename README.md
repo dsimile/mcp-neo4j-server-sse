@@ -42,7 +42,7 @@ The server offers six core tools:
 1.Clone the repository
 
 ```cmd
-git clone https://github.com/dsimile/neo4j-server-remote.git
+git clone https://github.com/dsimile/mcp-neo4j-server-sse.git
 ```
 
 2.Install required
