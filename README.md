@@ -50,7 +50,7 @@ git clone https://github.com/dsimile/mcp-neo4j-server-sse.git
 - Python 3.12+
 
 ```cmd
-cd neo4j-server-remote
+cd mcp-neo4j-server-sse
 
 pip install -r requirements.txt
 ```
