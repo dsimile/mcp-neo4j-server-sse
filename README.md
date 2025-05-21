@@ -1,5 +1,5 @@
 # neo4j-server-remote
-neo4j-server-remote is an MCP server that uses Server-Sent Events (SSE) as the transport protocol.
+neo4j-server-remote is an MCP server that uses Server-Sent Events (SSE) or STDIO as the transport protocol.
 
 ## Overview
 
@@ -14,7 +14,7 @@ The server provides a demonstration prompt:
 
 ### Tools
 
-The server offers six core tools:
+The server offers three core tools:
 
 #### Query Tools
 
@@ -57,17 +57,25 @@ pip install -r requirements.txt
 
 3.Run server
 
-Run the MCP server using the UX command, and you can select the database of your choice. The default address ip is 0.0.0.0. The default address port is 8543.
+- SSE Mode (default )
+
+Run the MCP server using the UX command, and select the database of your choice. The default IP address is 0.0.0.0, and the default port is 8543.
 
 ```cmd
 uv run .\src\mcp-neo4j-cypher\neo4j_server_remote.py --url bolt://localhost:7687 --username neo4j --password neo4j123 --database neo4j
 ```
 
+- STDIO Mode
+
+Run the MCP server locally using the UX command with the mode set to STDIO and the same Neo4j connection information.
+
 > Note: Please ensure that Neo4j is running and accessible for remote connections.
 
 ### Released Package
 
-Add the server to your `cline_mcp_settings.json` with configuration of 
+Add the server configuration  to your `cline_mcp_settings.json`.
+
+- SSE Mode (default )
 
 ```json
 {
@@ -76,6 +84,34 @@ Add the server to your `cline_mcp_settings.json` with configuration of
       "url": "http://0.0.0.0:8543/sse",
       "disabled": false,
       "autoApprove": []
+    }
+  }
+}
+```
+
+- STDIO Mode
+
+```json
+{
+  "mcpServers": {
+    "neo4j-local": {
+      "disabled": false,
+      "timeout": 60,
+      "command": "uv",
+      "args": [
+        "run",
+        "/absolute/path/to/neo4j_server_remote.py",
+        "--url",
+        "bolt://localhost:7687",
+        "--username",
+        "neo4j",
+        "--password",
+        "neo4j123",
+        "--database",
+        "neo4j",
+        "--mode",
+        "stdio"
+      ]
     }
   }
 }
