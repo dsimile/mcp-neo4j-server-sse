@@ -1,8 +1,8 @@
 import logging
-import traceback
 from mcp.server.models import InitializationOptions
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
+from mcp.server.stdio import stdio_server
 from mcp.server.sse import SseServerTransport
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -16,7 +16,7 @@ from neo4j import GraphDatabase
 import re
 
 logger = logging.getLogger('mcp_neo4j_cypher_remote')
-logger.info("Starting MCP neo4j Server is remote")
+logger.info("Starting MCP neo4j Server")
 
 def is_write_query(query: str) -> bool:
     """Checks if a Cypher query contains common write clauses."""
@@ -67,9 +67,10 @@ async def main(
     neo4j_url: str,
     neo4j_username: str,
     neo4j_password: str,
-    neo4j_database: str = "neo4j",
-    host: str = "0.0.0.0",
-    port: int = 8543,
+    neo4j_database: str,
+    host: str,
+    port: int,
+    mode: str,
 ):
     logger.info(
         f"Connecting to neo4j MCP Server with DB URL: {neo4j_url}, DB name: {neo4j_database}"
@@ -178,19 +179,52 @@ RETURN label, apoc.map.fromPairs(attributes) as attributes, apoc.map.fromPairs(r
         except Exception as e:
             return [types.TextContent(type="text", text=f"Error: {str(e)}")]
 
-    # --- SSE Transport Setup ---
-    # Initialize SseServerTransport with the path *without* the trailing slash
-    sse_transport = SseServerTransport("/message/")
+    if mode.lower() == "stdio":
+        await setup_stdio_transport(server)
+    elif mode.lower() == "sse":
+        sse_transport = SseServerTransport("/message/")
+        await setup_sse_transport(server, host, port, sse_transport)
+    else:
+        raise ValueError(f"Invalid mode: {mode}")
 
+async def setup_stdio_transport(server: Server):
+    """Initialize and run server with stdio transport."""
+    logger.info("Setting up stdio transport")
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="neo4j-local",
+                server_version="0.1.0",
+                capabilities=server.get_capabilities(
+                    notification_options=NotificationOptions(),
+                    experimental_capabilities={},
+                ),
+            ),
+        )
+
+async def setup_sse_transport(server: Server, host: str, port: int, sse_transport: SseServerTransport):
+    """Initialize and run server with SSE transport."""
+    logger.info("Setting up SSE transport")
+    app = create_sse_app(server, sse_transport)
+    config = uvicorn.Config(app=app, host=host, port=port, log_level="info")
+    uvicorn_server = uvicorn.Server(config)
+    logger.info(f"Starting Uvicorn server on http://{host}:{port}")
+    await uvicorn_server.serve()
+
+def create_sse_app(server: Server, sse_transport: SseServerTransport):
+    """Create and configure Starlette app for SSE transport."""
     async def message_sse(request: Request):
         async with sse_transport.connect_sse(
             request.scope, request.receive, request._send
         ) as (read_stream, write_stream):
+            logger.info("Server running with sse transport")
             await server.run(
                 read_stream,
                 write_stream,
                 InitializationOptions(
-                    server_name="neo4j-remote",
+                    server_name="neo4j-sse",
                     server_version="0.1.1",
                     capabilities=server.get_capabilities(
                         notification_options=NotificationOptions(),
@@ -200,27 +234,12 @@ RETURN label, apoc.map.fromPairs(attributes) as attributes, apoc.map.fromPairs(r
             )
         return JSONResponse({"success": True})
 
-    async def message_post(request: Request):
-        try:
-            return await sse_transport.handle_post_message(
-                request.scope, request.receive, request._send
-            )
-        except Exception as e:
-            logger.error(
-                f"POST /message handler crashed: {e}\n{traceback.format_exc()}"
-            )
-            return JSONResponse(
-                {"error": str(e), "traceback": traceback.format_exc()}, status_code=500
-            )
-
-    # Create the Starlette app using Mount for /messages/
     app = Starlette(
         routes=[
             Route("/sse", endpoint=message_sse),
             Mount("/message/", app=sse_transport.handle_post_message),
         ]
     )
-
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -228,15 +247,7 @@ RETURN label, apoc.map.fromPairs(attributes) as attributes, apoc.map.fromPairs(r
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # --- Add Uvicorn Server Startup ---
-    # Create a Uvicorn config
-    config = uvicorn.Config(app=app, host=host, port=port, log_level="info")
-    # Create a Uvicorn server instance
-    uvicorn_server = uvicorn.Server(config)
-    # Run the server. This call is blocking until the server stops.
-    logger.info(f"Starting Uvicorn server on http://{host}:{port}")
-    await uvicorn_server.serve()
+    return app
 
 
 if __name__ == "__main__":
@@ -253,7 +264,7 @@ if __name__ == "__main__":
     logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
 
     parser = argparse.ArgumentParser(
-        description="Run Neo4j MCP Server using SSE transport."
+        description="Run Neo4j MCP Server using SSE or STDIO transport."
     )
     parser.add_argument(
         "--url",
@@ -264,7 +275,9 @@ if __name__ == "__main__":
     parser.add_argument("--password", required=True, help="Neo4j database password")
     parser.add_argument("--database", default="neo4j", help="Neo4j database name")
     parser.add_argument("--host", default="0.0.0.0", help="Host address to bind to")
-    parser.add_argument("--port", type=int, default=8543, help="Port to listen on")
+    parser.add_argument("--port", type=int, default=8543, help="Host port to listen on")
+    parser.add_argument("--mode", choices=["sse", "stdio"], default="sse", 
+                       help="Choose the transport protocol, either SSE or STDIO.")
     args = parser.parse_args()
 
     try:
@@ -276,6 +289,7 @@ if __name__ == "__main__":
                 args.database,
                 host=args.host,
                 port=args.port,
+                mode=args.mode,
             )
         )
     except Exception as e:
