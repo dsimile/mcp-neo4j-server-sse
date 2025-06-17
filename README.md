@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/dsimile-mcp-neo4j-server-sse-badge.png)](https://mseep.ai/app/dsimile-mcp-neo4j-server-sse)
+
 # neo4j-server-remote
 neo4j-server-remote is an MCP server that uses Server-Sent Events (SSE) or STDIO as the transport protocol.
 
